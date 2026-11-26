@@ -1,0 +1,54 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SIGRC | Galeria de Módulos — Treinamento dos Pontos de Resposta 2027</title><link rel="icon" href="assets/images/cube-logo.svg"><style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:Arial,Helvetica,sans-serif;background:#f5f6f8;color:#263540}
+#gallery{min-height:100vh;display:flex;flex-direction:column;background:linear-gradient(124deg,#1b3240,#385b74)}
+.gallery-top{height:43px;flex-shrink:0;background:#fff;border-bottom:1px solid #d9e0e5;display:flex;align-items:center;gap:8px;padding:4px 22px;box-shadow:0 1px 2px #0001}
+.gallery-top img{width:47px;height:30px;object-fit:contain}.gallery-title{font-size:13px;font-weight:700;color:#3d4b5d;letter-spacing:.2px}
+.gallery-icons{margin-left:auto;display:flex;align-items:center;gap:24px;color:#a1a6a9}.gallery-icons img{width:19px;height:19px;opacity:.55}
+.gallery-main{flex:1;width:min(1270px,calc(100% - 60px));margin:0 auto;padding:38px 0 85px}
+.gallery-grid{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));column-gap:26px;row-gap:26px}
+.module-card{border:0;background:#fff;border-radius:6px;min-height:165px;box-shadow:0 3px 7px #0003;color:#121212;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;cursor:pointer;font-size:13px;font-weight:700}
+.module-card:hover,.module-card:focus-visible{transform:translateY(-2px);outline:2px solid #cddfeb;box-shadow:0 7px 14px #0003}
+.module-card img{height:40px;width:40px;object-fit:contain}
+.gallery-footer{height:55px;flex-shrink:0;background:rgba(7,19,29,.46);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700}
+#modules-container{position:fixed;inset:0;display:none;background:#fff}
+#modules-container.active{display:block}
+iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:#fff}
+iframe.active{display:block}
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);padding:11px 18px;background:#233d50;color:white;border-radius:5px;box-shadow:0 4px 13px #0002;display:none;font-size:13px;z-index:99}
+@media(max-width:1050px){.gallery-grid{grid-template-columns:repeat(3,minmax(145px,1fr))}}@media(max-width:630px){.gallery-main{width:calc(100% - 28px);padding-top:20px}.gallery-grid{grid-template-columns:repeat(2,minmax(120px,1fr));gap:14px}.module-card{min-height:135px}.gallery-icons{gap:12px}}
+</style></head><body>
+<section id="gallery" aria-label="Galeria de Módulos"><header class="gallery-top"><img src="assets/images/sigrc-logo.svg" alt="SIGRC"><span class="gallery-title">Galeria de Módulos</span><div class="gallery-icons"><span title="Manual">▣</span><img src="assets/images/profile-icon.svg" alt="Perfil"></div></header><main class="gallery-main"><div class="gallery-grid">
+<button type="button" class="module-card" data-page=""><img src="assets/images/person.svg" alt=""><span>Perfil</span></button>
+<button type="button" class="module-card" data-page="resolucao"><img src="assets/images/contract.svg" alt=""><span>Resolução</span></button></div></main><footer class="gallery-footer">Powered By Metasix © 2010-2026 · Treinamento — Pontos de Resposta • Ouvidoria SUS 2027</footer></section>
+<div id="modules-container"><iframe id="frame-resolucao" src="modulos/resolucao.html" title="Módulo Resolução"></iframe></div>
+<div id="toast" role="status"></div>
+<script>
+(() => {
+ const APP='sigrc-integrado-2027';
+ const frames={resolucao:document.getElementById('frame-resolucao')};
+ const pronto={resolucao:false};let atual='galeria';
+ const mensagens={resolucao:'Módulo Resolução'};
+ function enviar(frame,acao){if(pronto[frame])frames[frame].contentWindow.postMessage({app:APP,acao},'*');}
+ function navegar(tela){
+  if(atual===tela)return;
+  if(frames[atual])enviar(atual,'leave');
+  atual=tela;
+  const aberto=tela!=='galeria';
+  document.getElementById('gallery').style.display=aberto?'none':'flex';
+  document.getElementById('modules-container').classList.toggle('active',aberto);
+  for(const nome of Object.keys(frames))frames[nome].classList.toggle('active',tela===nome);
+  if(frames[tela])enviar(tela,'enter');
+  window.scrollTo(0,0);
+ }
+ for(const nome of Object.keys(frames))frames[nome].addEventListener('load',()=>{pronto[nome]=true;if(atual===nome)enviar(nome,'enter');});
+ window.addEventListener('message',event=>{const d=event.data;if(!d||d.app!==APP||!['resolucao','galeria'].includes(d.tela))return;
+  const origem=Object.entries(frames).find(([,frame])=>frame.contentWindow===event.source)?.[0];if(!origem)return;
+  navegar(d.tela);
+ });
+ document.querySelectorAll('.module-card').forEach(b=>b.addEventListener('click',()=>{
+  const pagina=b.dataset.page;if(pagina)navegar(pagina);
+  else {const t=document.getElementById('toast');t.textContent='Este módulo não faz parte dos exercícios do simulador.';t.style.display='block';setTimeout(()=>t.style.display='none',2300);}
+ }));
+ window.simuladorNavegar=navegar;
+})();
+</script></body></html>
