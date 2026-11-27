@@ -1687,7 +1687,7 @@
             <li><a class="menu-item" onclick="simulateLoad()"><svg viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span>Minhas Solicitações</span></a></li>
             <li><a class="menu-item" onclick="simulateLoad()"><svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg><span>Desatribuídas</span></a></li>
             <li><a class="menu-item" onclick="simulateLoad()"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg><span>Solicitações internas</span></a></li>
-            <li><a class="menu-item" onclick="simulateLoad()"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Solicitações finalizadas</span></a></li>
+            <li><a class="menu-item" id="nav-finalizadas" onclick="navigateTo('finalizadas')"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Solicitações finalizadas</span></a></li>
           </ul>
         </div>
 
@@ -2022,7 +2022,7 @@
           <nav class="breadcrumb">
             <a onclick="navigateTo('resolucao-home')">Início</a>
             <span class="separator">/</span>
-            <a onclick="navigateTo('recebidas')">Solicitações recebidas</a>
+            <a id="det-breadcrumb-lista" onclick="voltarDaDemanda()">Solicitações recebidas</a>
             <span class="separator">/</span>
             <span class="current">Detalhes</span>
           </nav>
@@ -2040,7 +2040,7 @@
 
         <!-- Barra de Ações Superior -->
         <div class="detail-action-bar">
-          <button class="btn-detail-back" onclick="navigateTo('recebidas')" title="Voltar para Solicitações Recebidas">
+          <button class="btn-detail-back" onclick="voltarDaDemanda()" title="Voltar à lista de solicitações">
             ←
           </button>
 
@@ -2636,6 +2636,25 @@
       }, 550);
     }
 
+    // As duas abas compartilham o mesmo componente de tabela, mas têm conjuntos
+    // disjuntos de demandas: apenas FINALIZADO/INDEFERIDO vão para Finalizadas.
+    let abaSolicitacoesAtiva = 'recebidas';
+    function demandaEstaFinalizada(d) {
+      return !!d && (d.status === 'FINALIZADO' || d.status === 'INDEFERIDO');
+    }
+    function demandasDaAba(lista) {
+      return lista.filter(d => abaSolicitacoesAtiva === 'finalizadas' ? demandaEstaFinalizada(d) : !demandaEstaFinalizada(d));
+    }
+    function atualizarCabecalhoLista() {
+      const encerradas = abaSolicitacoesAtiva === 'finalizadas';
+      const card = document.getElementById('view-recebidas');
+      card.querySelector('.breadcrumb .current').textContent = encerradas ? 'Solicitações finalizadas' : 'Solicitações recebidas';
+      card.querySelector('.hero-title > span:first-child').textContent = encerradas ? 'Solicitações Finalizadas' : 'Solicitações Recebidas';
+      card.querySelector('.hero-subtitle').textContent = encerradas ? 'Gerenciamento de solicitações finalizadas' : 'Gerenciamento de solicitações recebidas';
+    }
+    function voltarDaDemanda() {
+      navigateTo(demandaEstaFinalizada(activeDemanda) ? 'finalizadas' : 'recebidas');
+    }
     // Navegação entre Views
     function navigateTo(viewName) {
       const overlay = document.getElementById('loading-overlay');
@@ -2658,12 +2677,14 @@
           document.getElementById('view-modules').classList.remove('hidden');
         } else if (viewName === 'resolucao-home') {
           document.getElementById('view-resolucao-home').classList.remove('hidden');
-        } else if (viewName === 'recebidas') {
-          document.getElementById('nav-recebidas').classList.add('active');
+        } else if (viewName === 'recebidas' || viewName === 'finalizadas') {
+          abaSolicitacoesAtiva = viewName;
+          document.getElementById('nav-' + viewName).classList.add('active');
           document.getElementById('view-recebidas').classList.remove('hidden');
+          atualizarCabecalhoLista();
           renderRecebidasTable();
         } else if (viewName === 'detalhes') {
-          document.getElementById('nav-recebidas').classList.add('active');
+          document.getElementById('nav-' + (demandaEstaFinalizada(activeDemanda) ? 'finalizadas' : 'recebidas')).classList.add('active');
           document.getElementById('view-detalhes').classList.remove('hidden');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -2868,6 +2889,14 @@
 
       const hospitalImg = '<img src="../assets/images/ic_local_hospital_white_24dp.png" alt="Saúde">';
       const playArrowImg = '<img class="play-arrow-icon" src="../assets/images/play-arrow.svg" alt="Expandir">';
+      if (!items.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 10;
+        td.style.cssText = 'text-align:center;padding:28px;color:#64748b';
+        td.textContent = 'Nenhuma solicitação encontrada nesta lista.';
+        tr.append(td);tbody.append(tr);
+      }
 
       items.forEach((item, idx) => {
         const realIdx=recebidasList.indexOf(item);
@@ -2951,6 +2980,7 @@
     function openDemandaDetail(idx) {
       const item = recebidasList[idx] || recebidasList[0];
       activeDemanda = item;
+      document.getElementById('det-breadcrumb-lista').textContent = demandaEstaFinalizada(item) ? 'Solicitações finalizadas' : 'Solicitações recebidas';
 
       document.getElementById('det-header-proto').textContent = item.protocolo;
       document.getElementById('det-num-sol').textContent = item.protocolo;
@@ -3435,6 +3465,7 @@ UNIDADE por extenso) ex.: Monica Alves da Silva - UBS Jaquaré/Hospital Brigadei
       const stamp=dataExt.replace(', ',' às ');
       const texto=(detalhesVal || complemento || 'Movimento registrado no protótipo.');
       activeDemanda.status=statusVal;
+      document.getElementById('det-breadcrumb-lista').textContent = demandaEstaFinalizada(activeDemanda) ? 'Solicitações finalizadas' : 'Solicitações recebidas';
       document.getElementById('det-hist-atual').textContent=statusVal;
       document.getElementById('det-status-atual').textContent=
         ['FIN','IND'].includes(codigo)?'Finalizada':codigo==='REAB'?'Em análise':
@@ -3669,7 +3700,7 @@ UNIDADE por extenso) ex.: Monica Alves da Silva - UBS Jaquaré/Hospital Brigadei
         const transferencia=eventoHistoricoExemplo(item,d0,'TR','Unidade de Ouvidoria',
           'Encaminhamento inicial para apuração pelo Ponto de Resposta.',item.orgaoCompleto,item.orgaoReferencia);
         historicosExemplo.set(item.protocolo,[transferencia,registro]);
-        item.status='TRANSFERÊNCIA DE DEMANDA';
+        if (!demandaEstaFinalizada(item)) item.status='TRANSFERÊNCIA DE DEMANDA';
       }
       if(!historicosExemplo.has(item.protocolo)) {
         const d0=item.dataHoraCompleta.replace(' às ',' ');
@@ -3704,7 +3735,8 @@ UNIDADE por extenso) ex.: Monica Alves da Silva - UBS Jaquaré/Hospital Brigadei
           ];
         }
         historicosExemplo.set(item.protocolo,eventos);
-        item.status=eventos[0].status;
+        // Não sobrescrever a finalização já gravada durante a sessão.
+        if (!demandaEstaFinalizada(item)) item.status=eventos[0].status;
       }
       historicoEvents=historicosExemplo.get(item.protocolo);
       selectedHistIdx=0;paginaHistorico=1;
@@ -4327,6 +4359,14 @@ function preencherSelect2027Seletor(pai,label,opcoes,identificador=""){
  'use strict';
  const campos=['ordenar-campo','ordenar-direcao','protocolo','vencimento','vencimento-data','registro','registro-data','historico','historico-data','cep','rua','numero','bairro','complemento','cidade','estado','categoria','conteudo','categoria-status','importante','agrupada','canal','criticidade','sla','etiqueta','orgao','origem'];
  let aplicados={},rascunho={},salvos=[];
+ let abaFiltroSincronizada='recebidas';
+ const filtrosPorAba={recebidas:{},finalizadas:{}};
+ function sincronizarFiltroAba(){
+   if(abaFiltroSincronizada===abaSolicitacoesAtiva)return;
+   filtrosPorAba[abaFiltroSincronizada]=JSON.parse(JSON.stringify(aplicados));
+   aplicados=JSON.parse(JSON.stringify(filtrosPorAba[abaSolicitacoesAtiva]||{}));
+   abaFiltroSincronizada=abaSolicitacoesAtiva;
+ }
  const el=k=>document.getElementById('f-'+k);
  const isChecked=k=>!!el(k)?.checked;
  const allStatuses=()=>[...new Set([...recebidasList.map(x=>x.status),...Object.values(NOMES_STATUS),'NOVA MANIFESTAÇÃO'])].filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR'));
@@ -4373,9 +4413,9 @@ function preencherSelect2027Seletor(pai,label,opcoes,identificador=""){
   const outros=Object.entries(aplicados).filter(([k,v])=>!labels[k]&&!['registro-data','vencimento-data','historico-data','ordenar-direcao'].includes(k)&&foiPreenchido(k,v));
   if(outros.length){const tag=document.createElement('span');tag.className='filtro-tag';tag.append('Outros ('+outros.length+')');const b=document.createElement('button');b.textContent='×';b.addEventListener('click',()=>{for(const [k] of outros)aplicados[k]=typeof aplicados[k]==='boolean'?false:'';atualizarTabelaFiltrada();});tag.append(b);tags.append(tag);}
  }
- function atualizarTabelaFiltrada(){const dados=filtrarOrdenar(recebidasList);renderAntigo(dados);const badge=document.querySelector('#view-recebidas .hero-count-badge');if(badge)badge.textContent=dados.length;mostrarTags();}
+ function atualizarTabelaFiltrada(){sincronizarFiltroAba();const dados=filtrarOrdenar(demandasDaAba(recebidasList));renderAntigo(dados);const badge=document.querySelector('#view-recebidas .hero-count-badge');if(badge)badge.textContent=dados.length;mostrarTags();}
  const renderAntigo=renderRecebidasTable;
- renderRecebidasTable=function(items){if(items&&items!==recebidasList){renderAntigo(filtrarOrdenar(items));return;}atualizarTabelaFiltrada();};
+ renderRecebidasTable=function(items){sincronizarFiltroAba();if(items&&items!==recebidasList){renderAntigo(filtrarOrdenar(demandasDaAba(items)));return;}atualizarTabelaFiltrada();};
  window.atualizarTabelaFiltrada=atualizarTabelaFiltrada;
  window.filterRecebidasQuick=function(){abrirFiltroAvancado();};
  window.resetRecebidasFilter=function(){aplicados={};atualizarTabelaFiltrada();};
@@ -4431,11 +4471,12 @@ window.TREINO_PONTOS_RESPOSTA=true;
    const tipoAntes=activeDemanda.tipoCaixaAtual;
    if(codigo==='PP'){
     const nova=limiteAtualSLA(activeDemanda);
-    nova.setDate(nova.getDate()+10);
+    nova.setDate(nova.getDate()+30);
     activeDemanda.dataLimiteSLA=dataISOlocalSLA(nova);
    }
    const nome=nomes[codigo];
    activeDemanda.status=nome;
+   document.getElementById('det-breadcrumb-lista').textContent = demandaEstaFinalizada(activeDemanda) ? 'Solicitações finalizadas' : 'Solicitações recebidas';
    const data=new Date().toLocaleString('pt-BR',{
     timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',
     hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false
@@ -4445,7 +4486,7 @@ window.TREINO_PONTOS_RESPOSTA=true;
     PRON:'A Ouvidoria negou a proposta. O mesmo Ponto de Resposta deve revisá-la, sem transferência de caixa.',
     DEVN:'A Ouvidoria negou a solicitação de devolução. A manifestação permanece na caixa do Ponto de Resposta.',
     RET:'A Ouvidoria acolheu o pedido de devolução e solicitou nova providência. A manifestação permanece na caixa do Ponto até eventual encaminhamento explícito.',
-    PP:'A Ouvidoria concedeu prazo adicional de dez dias; a caixa permanece a mesma.',
+    PP:'A Ouvidoria concedeu prazo adicional de 30 dias; a caixa permanece a mesma.',
     PPN:'A Ouvidoria negou a prorrogação. O Ponto de Resposta mantém a responsabilidade pelo tratamento.'
    };
    historicoEvents.unshift({
@@ -4472,7 +4513,7 @@ window.TREINO_PONTOS_RESPOSTA=true;
  const originalReset=resetarControlesRes;
  resetarControlesRes=function(){originalReset();mudarPerfilResolucao('PR');atualizarSimulacaoOuvidoria();};
  const originalNav=navigateTo;
- navigateTo=function(view){originalNav(view);if(view==='recebidas')setTimeout(atualizarTabelaFiltrada,520);};
+ navigateTo=function(view){originalNav(view);if(view==='recebidas'||view==='finalizadas')setTimeout(atualizarTabelaFiltrada,520);};
  document.querySelectorAll('#view-detalhes .detail-action-group button').forEach(b=>{
   if(!b.id || b.id!=='btn-top-responder'){
    if(b.textContent.includes('Nova Solicitação')||b.textContent.includes('Atribuições')||b.textContent.includes('Reiniciar processo')){
